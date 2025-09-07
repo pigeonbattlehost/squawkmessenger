@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Squawk Messenger</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap&subset=cyrillic" rel="stylesheet">
+<style>
+:root{
+--bg:#121212;
+--bubble-my:#7c4dff;
+--bubble-other:#333;
+--text:#ddd;
+--text-secondary:#888;
+--button-bg:#7c4dff;
+--button-hover:#6200ea;
+}
+body{
+margin:0;
+font-family:'Montserrat',sans-serif;
+background:var(--bg);
+color:var(--text);
+display:flex;
+justify-content:center;
+align-items:center;
+height:100vh;
+}
+.container{
+width:100%;
+max-width:400px;
+padding:20px;
+display:flex;
+flex-direction:column;
+gap:12px;
+}
+input,button{
+padding:14px;
+border:none;
+outline:none;
+border-radius:24px;
+font-family:'Montserrat';
+font-weight:500;
+}
+input{
+background:#1f1f1f;
+color:#ddd;
+width:100%;
+}
+button{
+background:var(--button-bg);
+color:#fff;
+cursor:pointer;
+transition:.2s;
+}
+button:hover{background:var(--button-hover);}
+.language{
+display:flex;
+gap:8px;
+justify-content:center;
+margin-top:10px;
+}
+.footer{
+text-align:center;
+color:var(--text-secondary);
+font-size:12px;
+margin-top:12px;
+}
+.hidden{display:none;}
+#chat_container{
+flex:1;
+overflow-y:auto;
+padding:12px;
+margin:12px 0;
+border-radius:24px;
+background:#111;
+display:flex;
+flex-direction:column;
+gap:6px;
+max-height:400px;
+scroll-behavior:smooth;
+}
+.bubble{
+max-width:70%;
+padding:10px 16px;
+border-radius:28px;
+word-wrap:break-word;
+font-size:14px;
+opacity:0;
+transform:translateY(20px);
+animation:fadeSlide 0.3s forwards;
+}
+@keyframes fadeSlide{
+0%{opacity:0;transform:translateY(20px);}
+100%{opacity:1;transform:translateY(0);}
+}
+.my-msg{background:var(--bubble-my);color:#fff;align-self:flex-end;border-bottom-right-radius:4px;}
+.other-msg{background:var(--bubble-other);color:var(--text);align-self:flex-start;border-bottom-left-radius:4px;}
+.input-area{display:flex;gap:6px;margin-top:6px;}
+.input-area input{flex:1;padding:12px;border-radius:24px;background:#1f1f1f;color:#ddd;border:none;outline:none;}
+.input-area button{padding:12px 20px;border-radius:36px;background:var(--button-bg);color:#fff;font-weight:bold;cursor:pointer;transition:.2s;border:none;}
+.input-area button:hover{background:var(--button-hover);}
+.room-code{text-align:center;color:var(--text-secondary);font-size:12px;margin-top:6px;cursor:pointer;}
+</style>
+</head>
+<body>
+<div class="container" id="main_container">
+    <div class="join-room" id="join_section">
+        <input type="text" id="nickname" placeholder="Your nickname / Ваш ник">
+        <input type="text" id="room_code" placeholder="Room code / Код комнаты">
+        <button id="join_btn">Join / Войти</button>
+        <button id="create_btn">Create / Создать</button>
+        <div class="language">
+            <button id="lang_en">EN</button>
+            <button id="lang_ru">RU</button>
+        </div>
+        <div class="footer">SQUAWK md-09072025</div>
+    </div>
+    <div class="chat hidden" id="chat_section">
+        <div id="chat_container"></div>
+        <div class="input-area">
+            <input type="text" id="message_input" placeholder="Type a message / Напишите сообщение">
+            <button id="send_btn">Send / Отправить</button>
+        </div>
+        <div class="room-code" id="room_code_display">#####</div>
+        <div class="footer" id="footer_text">SQUAWK md-09072025</div>
+    </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
+<script>
+let socket,myPlayerId=null,lang='EN';
+const joinBtn=document.getElementById('join_btn');
+const createBtn=document.getElementById('create_btn');
+const chatDiv=document.getElementById('chat_section');
+const joinDiv=document.getElementById('join_section');
+const chatContainer=document.getElementById('chat_container');
+const messageInput=document.getElementById('message_input');
+const sendBtn=document.getElementById('send_btn');
+const roomDisplay=document.getElementById('room_code_display');
+const nicknameInput=document.getElementById('nickname');
+const roomInput=document.getElementById('room_code');
+
+document.getElementById('lang_en').onclick=()=>{lang='EN';updateLang();}
+document.getElementById('lang_ru').onclick=()=>{lang='RU';updateLang();}
+
+function updateLang(){
+if(lang==='EN'){
+joinBtn.textContent='Join';
+createBtn.textContent='Create';
+messageInput.placeholder='Type a message';
+sendBtn.textContent='Send';
+}else{
+joinBtn.textContent='Войти';
+createBtn.textContent='Создать';
+messageInput.placeholder='Напишите сообщение';
+sendBtn.textContent='Отправить';
+}
+}
+
+createBtn.onclick=()=>{
+const nick=nicknameInput.value||'Anon';
+fetch('https://squawkmessenger.onrender.com/create_room',{method:'POST'})
+.then(r=>r.json())
+.then(data=>{
+roomInput.value=data.room_code;
+startChat(nick,data.room_code);
+});
+};
+
+joinBtn.onclick=()=>{
+const nick=nicknameInput.value||'Anon';
+const code=roomInput.value;
+if(!code)return;
+startChat(nick,code);
+};
+
+function startChat(nick,code){
+joinDiv.classList.add('hidden');
+chatDiv.classList.remove('hidden');
+roomDisplay.onclick=()=>roomDisplay.textContent=code;
+socket=io('https://squawkmessenger.onrender.com',{transports:['websocket']});
+socket.on('connect',()=>socket.emit('join_room',{nickname:nick,room_code:code}));
+socket.on('joined_room',data=>myPlayerId=data.player_id);
+socket.on('receive_message',data=>addMessage(data.nickname,data.text,data.player_id===myPlayerId));
+socket.on('system_message',data=>addMessage('System',data.text,false));
+}
+
+sendBtn.onclick=()=>{
+const text=messageInput.value;
+if(!text)return;
+const code=roomInput.value;
+socket.emit('send_message',{text,player_id:myPlayerId,room_code:code});
+messageInput.value='';
+};
+
+function addMessage(nick,text,isMe){
+const p=document.createElement('div');
+p.classList.add('bubble',isMe?'my-msg':'other-msg');
+p.innerHTML=`<strong>${nick}:</strong> ${text}`;
+chatContainer.appendChild(p);
+chatContainer.scroll({top:chatContainer.scrollHeight,behavior:'smooth'});
+}
+</script>
+</body>
+</html>
