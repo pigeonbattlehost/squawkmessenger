@@ -1,204 +1,557 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Squawk Messenger</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap&subset=cyrillic" rel="stylesheet">
 <style>
 :root{
---bg:#121212;
---bubble-my:#7c4dff;
---bubble-other:#333;
---text:#ddd;
---text-secondary:#888;
---button-bg:#7c4dff;
---button-hover:#6200ea;
+  --bg:#0f0f10; --panel:#151515; --sidebar:#1f1f1f;
+  --accent:#7c4dff; --accent-2:#6200ea; --text:#e6e6e6;
+  --muted:#9a9a9a; --bubble-my:#7c4dff; --bubble-other:#333;
 }
-body{
-margin:0;
-font-family:'Montserrat',sans-serif;
-background:var(--bg);
-color:var(--text);
-display:flex;
-justify-content:center;
-align-items:center;
-height:100vh;
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text)}
+.app{display:grid;grid-template-columns:300px 1fr;height:100vh;gap:0}
+.sidebar{background:var(--sidebar);padding:12px;display:flex;flex-direction:column;gap:10px;position:relative}
+.brand{font-weight:700;text-align:center;padding:8px 6px;border-radius:8px;background:linear-gradient(90deg,var(--panel),transparent)}
+.controls{display:flex;gap:8px}
+.controls input{flex:1;padding:8px;border-radius:8px;border:none;background:#111;color:var(--text)}
+.controls button{padding:8px 10px;border-radius:8px;border:none;background:var(--accent);color:#fff;cursor:pointer;min-width:80px}
+.menu-row{display:flex;gap:8px;align-items:center}
+.menu-item{flex:1;padding:8px;border-radius:8px;background:#111;border:1px solid rgba(255,255,255,0.02);color:var(--text);cursor:pointer}
+
+/* rooms */
+.rooms{flex:1;overflow:auto;display:flex;flex-direction:column;gap:6px;padding-top:8px;-webkit-overflow-scrolling:touch}
+.room-item{padding:10px;border-radius:8px;background:#2a2a2a;color:var(--text);cursor:pointer;display:flex;flex-direction:column;gap:4px;position:relative;transition:transform .18s ease,opacity .18s}
+.room-item.active{background:linear-gradient(90deg, rgba(124,77,255,0.12), rgba(98,0,234,0.04));border:1px solid rgba(124,77,255,0.08)}
+.room-title{font-weight:600;font-size:14px}
+.room-sub{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.delete-btn{position:absolute;top:6px;right:6px;padding:4px 6px;font-size:11px;background:#e53935;border:none;color:#fff;border-radius:6px;cursor:pointer}
+
+/* settings */
+.settings-panel{display:none;flex-direction:column;gap:10px;padding-top:6px}
+.setting-row{display:flex;flex-direction:column;gap:8px}
+.theme-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.theme-item{height:40px;border-radius:8px;cursor:pointer;border:2px solid transparent;display:flex;align-items:center;justify-content:center;font-size:12px;color:#000;font-weight:700}
+.theme-item.active{outline:3px solid rgba(255,255,255,0.06);transform:scale(1.03)}
+
+/* chat */
+.chat-panel{display:flex;flex-direction:column;padding:16px}
+.header{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--panel);border-radius:10px;position:relative;z-index:20}
+.header .left { display:flex; align-items:center; gap:8px; }
+#mobile_back_btn { display:none; padding:6px 10px;border-radius:8px;border:none;background:#111;color:#fff;cursor:pointer;font-weight:600 }
+.chat-container{flex:1;margin-top:12px;background:#0c0c0c;padding:12px;border-radius:12px;overflow:auto;display:flex;flex-direction:column;gap:8px}
+.bubble{max-width:70%;padding:10px 14px 18px 14px;border-radius:14px;margin:6px 0;font-size:14px;position:relative;word-break:break-word}
+.my-msg{background:var(--bubble-my);color:#fff;align-self:flex-end;margin-left:18%;border-bottom-right-radius:6px}
+.other-msg{background:var(--bubble-other);color:var(--text);align-self:flex-start;margin-right:18%;border-bottom-left-radius:6px}
+.sys-msg{align-self:center;background:transparent;color:var(--muted);font-size:12px}
+.bubble-body{display:block;padding-right:64px}
+.bubble .bubble-time{position:absolute;font-size:11px;color:rgba(255,255,255,0.85);bottom:6px;right:8px;opacity:0.95}
+.input-row{display:flex;gap:8px;margin-top:12px}
+.input-row input{flex:1;padding:12px;border-radius:999px;border:none;background:#111;color:var(--text)}
+.input-row button{padding:12px 16px;border-radius:999px;border:none;background:var(--accent);color:#fff;cursor:pointer;min-width:88px}
+.footer{font-size:12px;color:var(--muted);text-align:center;margin-top:8px}
+.no-room{display:flex;align-items:center;justify-content:center;height:60vh;color:var(--muted);font-size:16px}
+
+/* dialog */
+.dialog-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:none;align-items:center;justify-content:center;z-index:1000}
+.dialog{background:#1f1f1f;padding:20px;border-radius:12px;display:flex;flex-direction:column;gap:12px;min-width:280px;text-align:center}
+.dialog button{padding:8px 14px;border-radius:6px;border:none;background:var(--accent);color:#fff;cursor:pointer}
+.dialog button.cancel{background:#555;}
+
+/* drag visuals */
+.room-item.dragging{box-shadow:0 8px 20px rgba(0,0,0,0.6);opacity:0.98}
+.room-item.to-delete{opacity:0.4;transform:translateY(60px) scale(.98)}
+
+/* mobile */
+@media (max-width: 768px) {
+  .app { grid-template-columns: 1fr; position:relative; }
+  .sidebar {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 100;
+    transition: transform 0.28s ease;
+    background: var(--sidebar);
+  }
+  .sidebar.hidden { transform: translateX(-100%); }
+  .chat-panel {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 50;
+    transform: translateX(100%);
+    transition: transform 0.28s ease;
+  }
+  .chat-panel.active { transform: translateX(0); }
+  #mobile_back_btn { display:inline-flex; }
+  .rooms { padding-top:12px; }
+  .controls input { padding:12px; }
+  .brand { margin-bottom:6px; }
 }
-.container{
-width:100%;
-max-width:400px;
-padding:20px;
-display:flex;
-flex-direction:column;
-gap:12px;
-}
-input,button{
-padding:14px;
-border:none;
-outline:none;
-border-radius:24px;
-font-family:'Montserrat';
-font-weight:500;
-}
-input{
-background:#1f1f1f;
-color:#ddd;
-width:100%;
-}
-button{
-background:var(--button-bg);
-color:#fff;
-cursor:pointer;
-transition:.2s;
-}
-button:hover{background:var(--button-hover);}
-.language{
-display:flex;
-gap:8px;
-justify-content:center;
-margin-top:10px;
-}
-.footer{
-text-align:center;
-color:var(--text-secondary);
-font-size:12px;
-margin-top:12px;
-}
-.hidden{display:none;}
-#chat_container{
-flex:1;
-overflow-y:auto;
-padding:12px;
-margin:12px 0;
-border-radius:24px;
-background:#111;
-display:flex;
-flex-direction:column;
-gap:6px;
-max-height:400px;
-scroll-behavior:smooth;
-}
-.bubble{
-max-width:70%;
-padding:10px 16px;
-border-radius:28px;
-word-wrap:break-word;
-font-size:14px;
-opacity:0;
-transform:translateY(20px);
-animation:fadeSlide 0.3s forwards;
-}
-@keyframes fadeSlide{
-0%{opacity:0;transform:translateY(20px);}
-100%{opacity:1;transform:translateY(0);}
-}
-.my-msg{background:var(--bubble-my);color:#fff;align-self:flex-end;border-bottom-right-radius:4px;}
-.other-msg{background:var(--bubble-other);color:var(--text);align-self:flex-start;border-bottom-left-radius:4px;}
-.input-area{display:flex;gap:6px;margin-top:6px;}
-.input-area input{flex:1;padding:12px;border-radius:24px;background:#1f1f1f;color:#ddd;border:none;outline:none;}
-.input-area button{padding:12px 20px;border-radius:36px;background:var(--button-bg);color:#fff;font-weight:bold;cursor:pointer;transition:.2s;border:none;}
-.input-area button:hover{background:var(--button-hover);}
-.room-code{text-align:center;color:var(--text-secondary);font-size:12px;margin-top:6px;cursor:pointer;}
 </style>
 </head>
 <body>
-<div class="container" id="main_container">
-    <div class="join-room" id="join_section">
-        <input type="text" id="nickname" placeholder="Your nickname / Ваш ник">
-        <input type="text" id="room_code" placeholder="Room code / Код комнаты">
-        <button id="join_btn">Join / Войти</button>
-        <button id="create_btn">Create / Создать</button>
-        <div class="language">
-            <button id="lang_en">EN</button>
-            <button id="lang_ru">RU</button>
-        </div>
-        <div class="footer">SQUAWK md-09072025</div>
+<div class="app">
+  <div class="sidebar" id="sidebar_el">
+    <div class="brand">Squawk</div>
+
+    <div class="controls">
+      <input id="nickname_input" placeholder="Твой ник (никогда не поздно)" />
     </div>
-    <div class="chat hidden" id="chat_section">
-        <div id="chat_container"></div>
-        <div class="input-area">
-            <input type="text" id="message_input" placeholder="Type a message / Напишите сообщение">
-            <button id="send_btn">Send / Отправить</button>
-        </div>
-        <div class="room-code" id="room_code_display">#####</div>
-        <div class="footer" id="footer_text">SQUAWK md-09072025</div>
+
+    <div class="menu-row">
+      <button id="create_room_btn" class="menu-item">Создать</button>
+      <button id="open_settings_btn" class="menu-item">⚙ Настройки</button>
     </div>
+
+    <div class="controls">
+      <input id="room_code_input" placeholder="Код комнаты (или новый)" />
+      <button id="join_room_btn" class="menu-item">Войти</button>
+    </div>
+
+    <div id="rooms_view">
+      <div class="rooms" id="rooms_list"></div>
+    </div>
+
+    <div class="settings-panel" id="settings_panel">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div class="small-muted" id="settings_title">Настройки</div>
+        <button id="settings_back" class="menu-item" style="padding:6px 8px">Назад</button>
+      </div>
+
+      <div class="setting-row">
+        <div class="small-muted">Язык / Language</div>
+        <div style="display:flex;gap:8px">
+          <button id="lang_ru" class="menu-item">RU</button>
+          <button id="lang_en" class="menu-item">EN</button>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="small-muted" id="theme_label">Цветовая гамма</div>
+        <div class="theme-grid" id="theme_grid"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="chat-panel" id="chat_panel_el">
+    <div class="header" id="chat_header">
+      <div class="left">
+        <button id="mobile_back_btn">← Чаты</button>
+      </div>
+      <div style="flex:1;text-align:center">
+        <div class="title" id="header_title">Выбери чат слева</div>
+      </div>
+      <div style="min-width:80px;text-align:right">
+        <div class="small" id="header_status">offline</div>
+      </div>
+    </div>
+
+    <div class="chat-container" id="chat_container">
+      <div class="no-room" id="no_room_el">Нет открытого чата. Выбери комнату слева или создай новую.</div>
+    </div>
+
+    <div class="input-row">
+      <input id="message_input" placeholder="Напиши сообщение..." />
+      <button id="send_btn">Отправить</button>
+    </div>
+    <div class="footer" id="footer_el">SQUAWK md-09072025</div>
+  </div>
 </div>
+
+<div class="dialog-overlay" id="dialog_overlay">
+  <div class="dialog">
+    <div id="dialog_text">Вы точно хотите удалить этот чат?</div>
+    <div style="display:flex;gap:12px;justify-content:center">
+      <button id="dialog_yes">Да</button>
+      <button id="dialog_no" class="cancel">Нет</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
 <script>
-let socket,myPlayerId=null,lang='EN';
-const joinBtn=document.getElementById('join_btn');
-const createBtn=document.getElementById('create_btn');
-const chatDiv=document.getElementById('chat_section');
-const joinDiv=document.getElementById('join_section');
-const chatContainer=document.getElementById('chat_container');
-const messageInput=document.getElementById('message_input');
-const sendBtn=document.getElementById('send_btn');
-const roomDisplay=document.getElementById('room_code_display');
-const nicknameInput=document.getElementById('nickname');
-const roomInput=document.getElementById('room_code');
+/* storage keys + defaults */
+const LS_ROOMS = 'squawk_rooms_v1';
+const LS_NICK = 'squawk_nick_v1';
+const LS_LANG = 'squawk_lang_v1';
+const LS_THEME = 'squawk_theme_v1';
 
-document.getElementById('lang_en').onclick=()=>{lang='EN';updateLang();}
-document.getElementById('lang_ru').onclick=()=>{lang='RU';updateLang();}
+let socket = null;
+let currentRoom = null;
+let myPlayerId = null;
+let lang = localStorage.getItem(LS_LANG) || 'RU';
+let themeId = localStorage.getItem(LS_THEME) || 'purple';
 
-function updateLang(){
-if(lang==='EN'){
-joinBtn.textContent='Join';
-createBtn.textContent='Create';
-messageInput.placeholder='Type a message';
-sendBtn.textContent='Send';
-}else{
-joinBtn.textContent='Войти';
-createBtn.textContent='Создать';
-messageInput.placeholder='Напишите сообщение';
-sendBtn.textContent='Отправить';
+/* theme list (now includes black) */
+const THEMES = [
+  { id:'pink', name_ru:'Розовый', name_en:'Pink', accent:'#FF64B0', accent2:'#e43d8e', bubble:'#FF64B0' },
+  { id:'orange', name_ru:'Оранжевый', name_en:'Orange', accent:'#FF8A4C', accent2:'#e06a34', bubble:'#FF8A4C' },
+  { id:'red', name_ru:'Красный', name_en:'Red', accent:'#FF4C4C', accent2:'#e03030', bubble:'#FF4C4C' },
+  { id:'purple', name_ru:'Фиолетовый', name_en:'Purple', accent:'#7C4DFF', accent2:'#6200ea', bubble:'#7C4DFF' },
+  { id:'blue', name_ru:'Синий', name_en:'Blue', accent:'#4C6BFF', accent2:'#254bff', bubble:'#4C6BFF' },
+  { id:'cyan', name_ru:'Циан', name_en:'Cyan', accent:'#00BCD4', accent2:'#00a4b0', bubble:'#00BCD4' },
+  { id:'teal', name_ru:'Бирюзовый', name_en:'Teal', accent:'#009688', accent2:'#006b63', bubble:'#009688' },
+  { id:'green', name_ru:'Зелёный', name_en:'Green', accent:'#4CAF50', accent2:'#357a2e', bubble:'#4CAF50' },
+  { id:'amber', name_ru:'Янтарный', name_en:'Amber', accent:'#FFB300', accent2:'#d99500', bubble:'#FFB300' },
+  { id:'gray', name_ru:'Серый', name_en:'Gray', accent:'#607D8B', accent2:'#455a64', bubble:'#607D8B' },
+  { id:'black', name_ru:'Чёрная', name_en:'Black', accent:'#000000', accent2:'#0a0a0a', bubble:'#0b0b0b' }
+];
+
+const LANGS = {
+  RU: {
+    nickname: 'Твой ник',
+    room_code: 'Код комнаты (или новый)',
+    join_room_btn: 'Войти',
+    create_room_btn: 'Создать',
+    send_btn: 'Отправить',
+    select_chat: 'Выбери чат слева',
+    no_room: 'Нет открытого чата, выбери комнату слева или создай новую',
+    no_messages: 'Пока пусто — напиши что-нибудь.',
+    footer: 'SQUAWK md-1.0',
+    delete_confirm: 'Вы точно хотите удалить этот чат?',
+    delete_yes: 'Да',
+    delete_no: 'Нет',
+    local_room_created: 'Локальная комната создана (offline).',
+    message_saved_offline: 'Сообщение сохранено локально (offline).',
+    joined_room: 'Вошёл в комнату (player_id {id})',
+    system_nick: 'System',
+    online: 'в сети',
+    offline: 'офлайн',
+    settings_title: 'Настройки',
+    theme_label: 'Цветовая гамма'
+  },
+  EN: {
+    nickname: 'Your nickname',
+    room_code: 'Room code (or new)',
+    join_room_btn: 'Join',
+    create_room_btn: 'Create',
+    send_btn: 'Send',
+    select_chat: 'Select a chat',
+    no_room: 'No open chat, select a room or create a new one',
+    no_messages: 'Empty — write something...',
+    footer: 'SQUAWK md-1.0',
+    delete_confirm: 'Are you sure you want to delete this chat?',
+    delete_yes: 'Yes',
+    delete_no: 'No',
+    local_room_created: 'Local room created (offline).',
+    message_saved_offline: 'Message saved locally (offline).',
+    joined_room: 'Joined room (player_id {id})',
+    system_nick: 'System',
+    online: 'online',
+    offline: 'offline',
+    settings_title: 'Settings',
+    theme_label: 'Color theme'
+  }
+};
+
+/* DOM */
+const roomsList = document.getElementById('rooms_list');
+const chatContainer = document.getElementById('chat_container');
+const headerTitle = document.getElementById('header_title');
+const headerStatus = document.getElementById('header_status');
+const nicknameInput = document.getElementById('nickname_input');
+const roomCodeInput = document.getElementById('room_code_input');
+const joinCodeInput = document.getElementById('join_code_input');
+const createRoomBtn = document.getElementById('create_room_btn');
+const joinRoomBtn = document.getElementById('join_room_btn');
+const sendBtn = document.getElementById('send_btn');
+const messageInput = document.getElementById('message_input');
+const dialogOverlay = document.getElementById('dialog_overlay');
+const dialogYes = document.getElementById('dialog_yes');
+const dialogNo = document.getElementById('dialog_no');
+const sidebarEl = document.getElementById('sidebar_el');
+const chatPanelEl = document.getElementById('chat_panel_el');
+const dialogTextEl = document.getElementById('dialog_text');
+const noRoomEl = document.getElementById('no_room_el');
+const footerEl = document.getElementById('footer_el');
+const openSettingsBtn = document.getElementById('open_settings_btn');
+const settingsPanel = document.getElementById('settings_panel');
+const roomsView = document.getElementById('rooms_view');
+const settingsBack = document.getElementById('settings_back');
+const langRU = document.getElementById('lang_ru');
+const langEN = document.getElementById('lang_en');
+const themeGrid = document.getElementById('theme_grid');
+const mobileBackBtn = document.getElementById('mobile_back_btn');
+
+nicknameInput.value = localStorage.getItem(LS_NICK) || '';
+
+/* helpers */
+function loadRooms(){ try{ return JSON.parse(localStorage.getItem(LS_ROOMS) || '[]'); }catch(e){return []} }
+function saveRooms(arr){ localStorage.setItem(LS_ROOMS, JSON.stringify(arr)); }
+function messagesKey(room){ return `squawk_messages_${room}_v1`; }
+function loadMessages(room){ try{ return JSON.parse(localStorage.getItem(messagesKey(room)) || '[]'); }catch(e){return []} }
+function saveMessages(room,arr){ localStorage.setItem(messagesKey(room), JSON.stringify(arr)); }
+function saveNick(){ localStorage.setItem(LS_NICK, nicknameInput.value || 'Anon'); }
+function getNick(){ return (nicknameInput.value || localStorage.getItem(LS_NICK) || 'Anon'); }
+function randomCode(len=6){ const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s=''; for(let i=0;i<len;i++) s+=chars[Math.floor(Math.random()*chars.length)]; return s; }
+function escapeHtml(str){ return String(str).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
+function formatTime(ts){ if(!ts) return ''; const d=new Date(ts); return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); }
+
+/* themes */
+function applyTheme(id){
+  const t = THEMES.find(x=>x.id===id) || THEMES.find(x=>x.id==='purple');
+  document.documentElement.style.setProperty('--accent', t.accent);
+  document.documentElement.style.setProperty('--accent-2', t.accent2);
+  document.documentElement.style.setProperty('--bubble-my', t.bubble);
+  localStorage.setItem(LS_THEME, id);
+  themeId = id;
+  Array.from(document.querySelectorAll('.theme-item')).forEach(el => el.classList.toggle('active', el.dataset.id === id));
 }
+function renderThemeGrid(){
+  themeGrid.innerHTML = '';
+  THEMES.forEach(th => {
+    const el = document.createElement('div');
+    el.className = 'theme-item';
+    el.dataset.id = th.id;
+    el.title = (lang==='EN' ? th.name_en : th.name_ru);
+    el.style.background = th.accent;
+    el.addEventListener('click', ()=> applyTheme(th.id));
+    if (th.id === themeId) el.classList.add('active');
+    themeGrid.appendChild(el);
+  });
 }
 
-createBtn.onclick=()=>{
-const nick=nicknameInput.value||'Anon';
-fetch('https://squawkmessenger.onrender.com/create_room',{method:'POST'})
-.then(r=>r.json())
-.then(data=>{
-roomInput.value=data.room_code;
-startChat(nick,data.room_code);
+/* more themes */
+THEMES.push({
+  id: 'red-contrast', 
+  name_ru: 'Ярко-красная', 
+  name_en: 'Bright Red', 
+  accent: '#FF0000', 
+  accent2: '#CC0000',    
+  bubble: '#FF1A1A'    
 });
-};
 
-joinBtn.onclick=()=>{
-const nick=nicknameInput.value||'Anon';
-const code=roomInput.value;
-if(!code)return;
-startChat(nick,code);
-};
+THEMES.push({
+  id: 'red-dark',
+  name_ru: 'Тёмно-красная',
+  name_en: 'Dark Red',
+  accent: '#8B0000',  
+  accent2: '#660000',  
+  bubble: '#4B0000' 
+});
 
-function startChat(nick,code){
-joinDiv.classList.add('hidden');
-chatDiv.classList.remove('hidden');
-roomDisplay.onclick=()=>roomDisplay.textContent=code;
-socket=io('https://squawkmessenger.onrender.com',{transports:['websocket']});
-socket.on('connect',()=>socket.emit('join_room',{nickname:nick,room_code:code}));
-socket.on('joined_room',data=>myPlayerId=data.player_id);
-socket.on('receive_message',data=>addMessage(data.nickname,data.text,data.player_id===myPlayerId));
-socket.on('system_message',data=>addMessage('System',data.text,false));
+function ensureMobileBackButton(){
+  if (window.innerWidth <= 768){
+    mobileBackBtn.style.display = 'inline-flex';
+    mobileBackBtn.textContent = '← ' + (lang === 'EN' ? 'Rooms' : 'Чаты');
+  } else {
+    mobileBackBtn.style.display = 'none';
+    sidebarEl.classList.remove('hidden');
+    chatPanelEl.classList.remove('active');
+  }
+}
+window.addEventListener('resize', ensureMobileBackButton);
+window.addEventListener('orientationchange', ensureMobileBackButton);
+
+/* rooms rendering */
+function addOrUpdateRoom(code, opts={}) {
+  const rooms = loadRooms();
+  const idx = rooms.findIndex(r=>r.code===code);
+  const now = Date.now();
+  if (idx === -1) rooms.unshift({ code, name: opts.name || code, lastText: opts.lastText || '', lastTs: opts.lastTs || now });
+  else {
+    rooms[idx].lastText = opts.lastText || rooms[idx].lastText;
+    rooms[idx].lastTs = opts.lastTs || rooms[idx].lastTs;
+    const r = rooms.splice(idx,1)[0];
+    rooms.unshift(r);
+  }
+  saveRooms(rooms);
+  renderRooms();
+}
+function deleteRoom(code){
+  let rooms = loadRooms();
+  rooms = rooms.filter(r=>r.code!==code);
+  saveRooms(rooms);
+  localStorage.removeItem(messagesKey(code));
+  if (currentRoom === code){
+    currentRoom = null;
+    chatContainer.innerHTML = `<div class="no-room">${LANGS[lang].no_room}</div>`;
+    headerTitle.textContent = LANGS[lang].select_chat;
+  }
+  renderRooms();
+}
+function renderRooms(){
+  const rooms = loadRooms();
+  roomsList.innerHTML = '';
+  if (!rooms.length){
+    roomsList.innerHTML = `<div class="small">${LANGS[lang].no_room}</div>`;
+    return;
+  }
+  rooms.forEach(r=>{
+    const item = document.createElement('div');
+    item.className = 'room-item' + (currentRoom === r.code ? ' active' : '');
+    item.dataset.code = r.code;
+    item.innerHTML = `<div class="room-title">${escapeHtml(r.name)}</div><div class="room-sub">${escapeHtml(r.lastText||'')}</div><button class="delete-btn">${LANGS[lang].delete_yes}</button>`;
+    item.addEventListener('click', ()=> { if (item.classList.contains('dragging')) return; openRoom(r.code); });
+    item.querySelector('.delete-btn').addEventListener('click', ev=>{ ev.stopPropagation(); promptDelete(r.code); });
+
+    let startY=0, curY=0, dragging=false; const threshold=80;
+    function onStart(e){ dragging=true; item.classList.add('dragging'); startY=(e.touches?e.touches[0].clientY:e.clientY); curY=0; }
+    function onMove(e){ if(!dragging) return; const y=(e.touches?e.touches[0].clientY:e.clientY); curY=y-startY; if (curY<0) curY=0; if (e.cancelable) e.preventDefault(); item.style.transform=`translateY(${curY}px)`; if(curY>threshold) item.classList.add('to-delete'); else item.classList.remove('to-delete'); }
+    function onEnd(){ dragging=false; item.classList.remove('dragging'); item.style.transition='transform .18s ease'; if (curY>threshold){ item.style.transform='translateY(60px)'; item.classList.add('to-delete'); setTimeout(()=>{ item.style.transform=''; item.classList.remove('to-delete'); },180); promptDelete(r.code); } else { item.style.transform=''; } setTimeout(()=>{ item.style.transition=''; },200); }
+
+    item.addEventListener('touchstart', onStart, {passive:false});
+    item.addEventListener('touchmove', onMove, {passive:false});
+    item.addEventListener('touchend', onEnd);
+    item.addEventListener('mousedown', (e)=>{ if(e.button!==0) return; onStart(e); const onDocMove=(ev)=>onMove(ev); const onDocUp=()=>{ onEnd(); document.removeEventListener('mousemove', onDocMove); document.removeEventListener('mouseup', onDocUp); }; document.addEventListener('mousemove', onDocMove); document.addEventListener('mouseup', onDocUp); });
+
+    roomsList.appendChild(item);
+  });
 }
 
-sendBtn.onclick=()=>{
-const text=messageInput.value;
-if(!text)return;
-const code=roomInput.value;
-socket.emit('send_message',{text,player_id:myPlayerId,room_code:code});
-messageInput.value='';
-};
-
-function addMessage(nick,text,isMe){
-const p=document.createElement('div');
-p.classList.add('bubble',isMe?'my-msg':'other-msg');
-p.innerHTML=`<strong>${nick}:</strong> ${text}`;
-chatContainer.appendChild(p);
-chatContainer.scroll({top:chatContainer.scrollHeight,behavior:'smooth'});
+/* delete confirm */
+let pendingDelete = null;
+function promptDelete(code){
+  pendingDelete = code;
+  dialogTextEl.textContent = LANGS[lang].delete_confirm;
+  dialogYes.textContent = LANGS[lang].delete_yes;
+  dialogNo.textContent = LANGS[lang].delete_no;
+  dialogOverlay.style.display = 'flex';
 }
+dialogNo.addEventListener('click', ()=>{ dialogOverlay.style.display='none'; pendingDelete=null; });
+dialogYes.addEventListener('click', ()=>{ if(pendingDelete) deleteRoom(pendingDelete); dialogOverlay.style.display='none'; pendingDelete=null; });
+
+/* messages */
+function renderMessagesForRoom(room){
+  const msgs = loadMessages(room);
+  chatContainer.innerHTML = '';
+  if (!msgs.length){ chatContainer.innerHTML = `<div class="no-room">${LANGS[lang].no_messages}</div>`; return; }
+  msgs.forEach(m=>{
+    if (m.system){
+      const d=document.createElement('div'); d.className='sys-msg'; d.textContent=m.text; chatContainer.appendChild(d);
+    } else {
+      const d=document.createElement('div'); d.className='bubble ' + (m.me ? 'my-msg' : 'other-msg');
+      const time = m.ts ? formatTime(m.ts) : '';
+      d.innerHTML = `<div class="bubble-body"><strong>${escapeHtml(m.nickname)}:</strong> <span class="bubble-text">${escapeHtml(m.text)}</span></div><div class="bubble-time">${time}</div>`;
+      chatContainer.appendChild(d);
+    }
+  });
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+function isDuplicate(room,msg){ const arr=loadMessages(room); if(!arr.length) return false; const last=arr[arr.length-1]; if(!last) return false; return (String(last.text)===String(msg.text) && String(last.nickname)===String(msg.nickname)); }
+function pushMessage(room,msg){ if(!room) return; if(isDuplicate(room,msg)) return; const arr=loadMessages(room); arr.push(msg); saveMessages(room,arr); addOrUpdateRoom(room,{ lastText: msg.system? ('[SYS] '+msg.text): msg.text, lastTs: msg.ts }); if (currentRoom===room) renderMessagesForRoom(room); }
+
+/* socket */
+function ensureSocket(){
+  if (socket) return;
+  try {
+    socket = io((location.hostname==='localhost' || location.hostname==='127.0.0.1') ? 'http://localhost:5000' : 'https://squawkmessenger.onrender.com', { transports: ['websocket'] });
+  } catch(e){ socket=null; console.warn('socket init failed', e); }
+  if(!socket) return;
+  socket.on('connect', ()=>{ headerStatus.textContent = LANGS[lang].online; if (currentRoom) socket.emit('join_room', { nickname: getNick(), room_code: currentRoom }); });
+  socket.on('disconnect', ()=>{ headerStatus.textContent = LANGS[lang].offline; myPlayerId=null; });
+  socket.on('joined_room', data=>{ myPlayerId=data.player_id; pushMessage(currentRoom, { nickname: LANGS[lang].system_nick, text: LANGS[lang].joined_room.replace('{id}', myPlayerId), ts: Date.now(), system:true, me:false }); });
+  socket.on('receive_message', data=>{ if (data.player_id && myPlayerId && data.player_id===myPlayerId) return; pushMessage(currentRoom, { nickname: data.nickname, text: data.text, ts: Date.now(), system:false, me:false }); });
+  socket.on('system_message', data=>{ pushMessage(currentRoom, { nickname: LANGS[lang].system_nick, text: data.text, ts: Date.now(), system:true, me:false }); });
+}
+
+/* open room */
+function openRoom(code){
+  currentRoom = code;
+  renderRooms();
+  headerTitle.textContent = code;
+  headerStatus.textContent = LANGS[lang].offline;
+  renderMessagesForRoom(code);
+  ensureSocket();
+  if (socket && socket.connected) socket.emit('join_room', { nickname: getNick(), room_code: code });
+  if (window.innerWidth <= 768){ sidebarEl.classList.add('hidden'); chatPanelEl.classList.add('active'); }
+}
+
+/* send */
+sendBtn.addEventListener('click', ()=>{
+  const text = messageInput.value.trim();
+  if (!currentRoom || !text) return;
+  const msg = { nickname: getNick(), text, ts: Date.now(), system:false, me:true };
+  pushMessage(currentRoom, msg);
+  if (socket && socket.connected){
+    socket.emit('send_message', { text, player_id: myPlayerId, room_code: currentRoom });
+  } else {
+    pushMessage(currentRoom, { nickname: LANGS[lang].system_nick, text: LANGS[lang].message_saved_offline, ts: Date.now(), system:true, me:false });
+  }
+  messageInput.value='';
+});
+messageInput.addEventListener('keydown', e=>{ if(e.key==='Enter') sendBtn.click(); });
+
+/* create/join */
+createRoomBtn.addEventListener('click', ()=>{
+  const nick = getNick(); saveNick();
+  const desired = (roomCodeInput.value || randomCode()).toUpperCase();
+  const base = (location.hostname==='localhost' || location.hostname==='127.0.0.1') ? 'http://localhost:5000' : 'https://squawkmessenger.onrender.com';
+  fetch(base + '/create_room', { method: 'POST' }).then(r=>r.json()).then(data=>{
+    const code = data.room_code || desired;
+    addOrUpdateRoom(code, { name: code, lastText:'', lastTs: Date.now() });
+    openRoom(code);
+  }).catch(err=>{
+    const code = desired;
+    addOrUpdateRoom(code, { name: code, lastText: '(' + LANGS[lang].local_room_created + ')', lastTs: Date.now() });
+    pushMessage(code, { nickname: LANGS[lang].system_nick, text: LANGS[lang].local_room_created, ts: Date.now(), system:true, me:false });
+    openRoom(code);
+  });
+});
+joinRoomBtn.addEventListener('click', ()=> {
+  const code = (roomCodeInput.value || '').toUpperCase();
+  if (!code) return;
+  saveNick();
+  addOrUpdateRoom(code, { name: code, lastText: '(' + LANGS[lang].join_room_btn + ')', lastTs: Date.now() });
+  openRoom(code);
+});
+
+/* settings UI */
+openSettingsBtn.addEventListener('click', ()=>{ roomsView.style.display='none'; settingsPanel.style.display='flex'; });
+settingsBack.addEventListener('click', ()=>{ settingsPanel.style.display='none'; roomsView.style.display=''; });
+
+/* language */
+langRU.addEventListener('click', ()=>{ lang='RU'; localStorage.setItem(LS_LANG, lang); updateLang(); });
+langEN.addEventListener('click', ()=>{ lang='EN'; localStorage.setItem(LS_LANG, lang); updateLang(); });
+
+/* update lang */
+function updateLang(){
+  const t = LANGS[lang];
+  nicknameInput.placeholder = t.nickname;
+  roomCodeInput.placeholder = t.room_code;
+  joinRoomBtn.textContent = t.join_room_btn;
+  createRoomBtn.textContent = t.create_room_btn;
+  sendBtn.textContent = t.send_btn;
+  headerTitle.textContent = currentRoom || t.select_chat;
+  noRoomEl.textContent = t.no_messages;
+  dialogTextEl.textContent = t.delete_confirm;
+  dialogYes.textContent = t.delete_yes;
+  dialogNo.textContent = t.delete_no;
+  headerStatus.textContent = t.offline;
+  footerEl.textContent = t.footer;
+  document.getElementById('settings_title').textContent = t.settings_title;
+  document.getElementById('theme_label').textContent = t.theme_label;
+  ensureMobileBackButton();
+  renderThemeGrid();
+}
+
+/* init on DOM ready — attach mobile back click handler reliably */
+document.addEventListener('DOMContentLoaded', ()=>{
+  // mobile back button click should reliably show rooms and hide chat panel
+  mobileBackBtn.addEventListener('click', ()=>{
+    sidebarEl.classList.remove('hidden');
+    chatPanelEl.classList.remove('active');
+  });
+
+  renderThemeGrid();
+  applyTheme(themeId);
+  renderRooms();
+  updateLang();
+
+  const rooms = loadRooms();
+  if (rooms && rooms.length>0) setTimeout(()=> openRoom(rooms[0].code), 200);
+
+  nicknameInput.addEventListener('change', saveNick);
+  roomsList.addEventListener('touchmove', (e)=>{}, { passive:true });
+  ensureMobileBackButton();
+});
 </script>
 </body>
 </html>
